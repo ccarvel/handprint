@@ -9,17 +9,17 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2020 by the California Institute of Technology.  This code
+Copyright (c) 2018-2021 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
 
-from collections import namedtuple
+from   collections import namedtuple
+from   commonpy.file_utils import readable, relative
 import imagesize
 
-import handprint
-from handprint.debug import log
-from handprint.files import readable
+if __debug__:
+    from sidetrack import set_debug, log, logr
 
 
 # Named tuple definitions.
@@ -30,13 +30,16 @@ TRResult.__doc__ = '''Results of invoking a text recognition service.
   'path' is the file path or URL of the item in question
   'data' is the full data result as a Python dict (or {} in case of error)
   'text' is the extracted text as a string (or '' in case of error)
+  'boxes' is a list of text boxes
   'error' is None if no error occurred, or the text of any error messages
 '''
 
-TextBox = namedtuple('TextBox', 'text boundingBox')
-TextBox.__doc__ = '''Representation of a single bounding box and text therein.
-  'box' is the bounding box, as XY coordinates of corners starting with u.l.
-  'text' is the text
+Box = namedtuple('Box', 'kind bb text score')
+Box.__doc__ = '''Representation of a single box, possibly containing text.
+  'kind' is the type; this can be "word", "line", "paragraph".
+  'bb' is the bounding box, as XY coordinates of corners starting with u.l.
+  'text' is text (when the box contains text).
+  'score' is the confidence score given to this item by the service.
 '''
 
 
@@ -59,14 +62,18 @@ class TextRecognition(object):
 
 
     def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            return not self.name() < other.name() and not other.name() < self.name()
+        if isinstance(other, type(self)):
+            return self.__dict__ == other.__dict__
+        return NotImplemented
 
 
     def __ne__(self, other):
-        return not __eq__(self, other)
+        # Based on lengthy Stack Overflow answer by user "Maggyero" posted on
+        # 2018-06-02 at https://stackoverflow.com/a/50661674/743730
+        eq = self.__eq__(other)
+        if eq is not NotImplemented:
+            return not eq
+        return NotImplemented
 
 
     def __lt__(self, other):
@@ -74,24 +81,21 @@ class TextRecognition(object):
 
 
     def __gt__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
+        if isinstance(other, type(self)):
             return other.name() < self.name()
+        return NotImplemented
 
 
     def __le__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
+        if isinstance(other, type(self)):
             return not other.name() < self.name()
+        return NotImplemented
 
 
     def __ge__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
+        if isinstance(other, type(self)):
             return not self.name() < other.name()
+        return NotImplemented
 
 
     def init_credentials(self):
@@ -125,9 +129,9 @@ class TextRecognition(object):
         pass
 
 
-    def result(self, path):
+    def result(self, path, saved_result = None):
         '''Returns the text recognition results from the service as an
-        TRResult named tuple.
+        TRResult named tuple.  If a saved result is supplied, use that.
         '''
         pass
 
@@ -143,22 +147,22 @@ class TextRecognition(object):
             return (None, TRResult(path = file_path, data = {}, text = '',
                                    error = error_text, boxes = []))
 
+        rel_path = relative(file_path)
         if not readable(file_path):
-            return error_result('Unable to read file: {}'.format(file_path))
-        if __debug__: log('reading image file {} for {}', file_path, self.name())
+            return error_result(f'Unable to read file: {rel_path}')
+        if __debug__: log(f'reading {rel_path} for {self.name()}')
         with open(file_path, 'rb') as image_file:
             image = image_file.read()
         if len(image) == 0:
-            return error_result('Empty file: {}'.format(file_path))
+            return error_result(f'Empty file: {rel_path}')
         if len(image) > self.max_size():
-            text = 'Exceeds {} byte limit for service: {}'.format(self.max_size(), file_path)
+            text = f'Exceeds {self.max_size()} byte limit for service: {rel_path}'
             return error_result(text)
         width, height = imagesize.get(file_path)
-        if __debug__: log('image size is width = {}, height = {}', width, height)
+        if __debug__: log(f'image size is width = {width}, height = {height}')
         if self.max_dimensions():
             max_width, max_height = self.max_dimensions()
             if width > max_width or height > max_height:
-                text = 'Image dimensions {}x{} exceed {} limits: {}'.format(
-                    width, height, self.name(), file_path)
+                text = f'Dimensions {width}x{height} exceed {self.name()} limits: {rel_path}'
                 return error_result(text)
         return (image, None)

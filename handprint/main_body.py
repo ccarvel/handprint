@@ -9,27 +9,29 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2020 by the California Institute of Technology.  This code
+Copyright (c) 2018-2021 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
 
+from   bun import inform, alert, alert_fatal, warn
+from   commonpy.interrupt import raise_for_interrupts
+from   commonpy.data_utils import pluralized
+from   commonpy.file_utils import filename_extension, filename_basename
+from   commonpy.file_utils import files_in_directory, readable, writable
 import os
-from   os import path
+from   os.path import isfile, isdir, exists
 import sys
+
+if __debug__:
+    from sidetrack import set_debug, log, logr
 
 import handprint
 from handprint import _OUTPUT_EXT, _OUTPUT_FORMAT
-from handprint.debug import set_debug, log
+from handprint.credentials import Credentials
 from handprint.exceptions import *
-from handprint.files import filename_extension, filename_basename
-from handprint.files import files_in_directory, filter_by_extensions
-from handprint.files import readable, writable, is_url
-from handprint.manager import Manager
-from handprint.network import network_available, disable_ssl_cert_check
+from handprint.exit_codes import ExitCode
 from handprint.services import ACCEPTED_FORMATS, services_list
-from handprint.styled import styled
-from handprint.ui import inform, alert, warn
 
 
 # Exported classes.
@@ -38,84 +40,125 @@ from handprint.ui import inform, alert, warn
 class MainBody(object):
     '''Main body for Handprint.'''
 
-    def __init__(self, base_name, extended, from_file, output_dir, threads):
-        '''Initialize internal state and prepare for running services.'''
+    def __init__(self, **kwargs):
+        '''Initialize internal state.'''
 
+        # Assign parameters to self to make them available within this object.
+        for key, value in kwargs.items():
+            if __debug__: log(f'parameter value self.{key} = {value}')
+            setattr(self, key, value)
+
+        # We expose an attribute "exception" that callers can use to find out
+        # if the thread finished normally or with an exception.
+        self.exception = None
+
+        # The manager object manages the process of manipulating images and
+        # sending them to the services.
+        from handprint.manager import Manager
+        self._manager = Manager(self.services, self.threads, self.output_dir,
+                                self.make_grid, self.compare, self.extended,
+                                self.text_size, self.text_color, self.text_shift,
+                                self.display, self.confidence, self.reuse_json)
+
+
+    def run(self):
+        '''Run the main body.'''
+
+        if __debug__: log('running MainBody')
+        try:
+            self._do_preflight()
+            self._do_main_work()
+        except Exception as ex:
+            if __debug__: log(f'exception in main body: {str(ex)}')
+            self.exception = sys.exc_info()
+        if __debug__: log('finished MainBody')
+
+
+    def stop(self):
+        if __debug__: log('stopping ...')
+        self._manager.stop_services()
+
+
+    def _do_preflight(self):
+        '''Check the option values given by the user, and do other prep.'''
+
+        from handprint.network import network_available
         if not network_available():
-            raise ServiceFailure('No network.')
+            alert_fatal('No network connection.')
+            raise CannotProceed(ExitCode.no_network)
 
-        if from_file:
-            if not path.exists(from_file):
-                raise RuntimeError('File not found: {}'.format(from_file))
-            if not readable(from_file):
-                raise RuntimeError('File not readable: {}'.format(from_file))
+        if self.from_file:
+            if not exists(self.from_file):
+                alert_fatal(f'File not found: {self.from_file}')
+                raise CannotProceed(ExitCode.bad_arg)
+            if not readable(self.from_file):
+                alert_fatal(f'File not readable: {self.from_file}')
+                raise CannotProceed(ExitCode.file_error)
 
-        if output_dir:
-            if path.isdir(output_dir):
-                if not writable(output_dir):
-                    raise RuntimeError('Directory not writable: {}'.format(output_dir))
+        if self.output_dir:
+            if isdir(self.output_dir):
+                if not writable(self.output_dir):
+                    alert_fatal(f'Directory not writable: {self.output_dir}')
+                    raise CannotProceed(ExitCode.file_error)
             else:
-                os.mkdir(output_dir)
-                if __debug__: log('created output_dir directory {}', output_dir)
-
-        self._base_name  = base_name
-        self._extended   = extended
-        self._from_file  = from_file
-        self._output_dir = output_dir
-        self._threads    = threads
+                os.mkdir(self.output_dir)
+                if __debug__: log(f'created output_dir directory {self.output_dir}')
 
 
-    def run(self, services, files, make_grid, compare):
-        '''Run service(s) on files.'''
-
-        # Set shortcut variables for better code readability below.
-        base_name  = self._base_name
-        extended   = self._extended
-        from_file  = self._from_file
-        output_dir = self._output_dir
-        threads    = self._threads
-
+    def _do_main_work(self):
         # Gather up some things and get prepared.
-        targets = self.targets_from_arguments(files, from_file)
+        targets = self.targets_from_arguments()
         if not targets:
-            raise RuntimeError('No images to process; quitting.')
+            alert_fatal('No images to process; quitting.')
+            raise CannotProceed(ExitCode.bad_arg)
         num_targets = len(targets)
 
-        inform('Will apply {} service{} ({}) to {} image{}.',
-               len(services), 's' if len(services) > 1 else '',
-               ', '.join(services), num_targets, 's' if num_targets > 1 else '')
-        if self._extended:
+        inform(f'Given {pluralized("image", num_targets, True)} to work on.')
+        inform('Will apply results of {}: {}'.format(
+            pluralized('service', len(self.services), True),
+            ', '.join(self.services), num_targets))
+        inform(f'Will use credentials stored in {Credentials.credentials_dir()}/.')
+        if self.extended:
             inform('Will save extended results.')
-        inform('Will use up to {} process threads.', threads)
+        num_threads = min(self.threads, len(self.services))
+        inform(f'Will use up to {num_threads} process threads.')
 
         # Get to work.
         if __debug__: log('initializing manager and starting processes')
-        manager = Manager(services, threads, output_dir, make_grid, compare, extended)
+        import shutil
         print_separators = num_targets > 1
+        rule = '─'*(shutil.get_terminal_size().columns or 80)
         for index, item in enumerate(targets, start = 1):
+            # Check whether we've been interrupted before doing another item.
+            raise_for_interrupts()
+            # Process next item.
             if print_separators:
-                inform(styled('━'*70, 'dark'))
-            manager.run_services(item, index, base_name)
+                inform(rule)
+            self._manager.run_services(item, index, self.base_name)
         if print_separators:
-            inform(styled('━'*70, 'dark'))
+            inform(rule)
 
 
-    def targets_from_arguments(self, files, from_file):
+    def targets_from_arguments(self):
+        # Validator_collection takes a long time to load.  Delay loading it
+        # until needed, so that overall application startup time is faster.
+        from validator_collection.checkers import is_url
+
         targets = []
-        if from_file:
-            if __debug__: log('reading {}', from_file)
-            targets = filter(None, open(from_file).read().splitlines())
+        if self.from_file:
+            if __debug__: log(f'reading {self.from_file}')
+            targets = filter(None, open(self.from_file).read().splitlines())
         else:
-            for item in files:
+            for item in self.files:
                 if is_url(item):
                     targets.append(item)
-                elif path.isfile(item) and filename_extension(item) in ACCEPTED_FORMATS:
+                elif isfile(item) and filename_extension(item) in ACCEPTED_FORMATS:
                     targets.append(item)
-                elif path.isdir(item):
+                elif isdir(item):
                     # It's a directory, so look for files within.
                     targets += files_in_directory(item, extensions = ACCEPTED_FORMATS)
                 else:
-                    warn('"{}" not a file or directory', item)
+                    warn(f'"{item}" not a file or directory')
 
         # Filter files created in past runs.
         targets = filter(lambda name: '.handprint' not in name, targets)
