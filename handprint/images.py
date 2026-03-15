@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -30,7 +30,7 @@ from   PIL import Image
 import warnings
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
+    from sidetrack import log
 
 # The following is needed for function annotated_image(...) in this file.
 # On macOS 10.13.6 with Python 3.5.7 and matplotlib 3.0.3, when running with
@@ -195,7 +195,7 @@ def reduced_image_dimensions(orig_file, dest_file, max_width, max_height):
 
 
 def converted_image(orig_file, to_format, dest_file = None):
-    '''Returns a tuple of (success, output file, error message).
+    '''Convert image in "orig_file" to format "to_format".
     Returns a tuple of (new_file, error).  The value of 'error' will be None
     if no error occurred; otherwise, the value will be a string summarizing the
     error that occurred and 'new_file' will be set to None.

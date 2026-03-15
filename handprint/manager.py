@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -21,6 +21,7 @@ from   commonpy.file_utils import filename_basename, filename_extension, relativ
 from   commonpy.file_utils import files_in_directory, alt_extension
 from   commonpy.file_utils import readable, writable, nonempty
 from   commonpy.file_utils import delete_existing
+from   commonpy.network_utils import download_file
 from   concurrent.futures import ThreadPoolExecutor
 import io
 from   itertools import repeat
@@ -42,14 +43,10 @@ import urllib
 import handprint
 from handprint import _OUTPUT_EXT, _OUTPUT_FORMAT
 from handprint.exceptions import *
-from handprint.network import download_file, disable_ssl_cert_check
 from handprint.services import KNOWN_SERVICES
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
-
-# Disable certificate verification.  FIXME: probably shouldn't do this.
-disable_ssl_cert_check()
+    from sidetrack import log
 
 
 # Helper data types.
@@ -137,7 +134,7 @@ class Manager:
         "index" and "base_name" to construct a download copy of the item if
         it has to be downloaded from a URL first.
         '''
-       # Shortcuts to make the code more readable.
+        # Shortcuts to make the code more readable.
         services = self._services
 
         inform(f'Starting on [white]{item}[/]')
@@ -407,8 +404,8 @@ class Manager:
             else:
                 # We found a ".handprint.ext" file, perhaps from a previous run,
                 # but for the current set of services, it's larger than allowed.
-                if __debug__: log('existing resized file larger than {}b: {}',
-                                  self._max_size, new_file)
+                if __debug__: log('existing resized file larger than'
+                                  + f' {self._max_size}b: {new_file}')
         inform(f'Size too large; reducing size: {relative(file)}')
         from handprint.images import reduced_image_size
         (resized, error) = reduced_image_size(file, new_file, self._max_size)
@@ -432,8 +429,8 @@ class Manager:
             else:
                 # We found a "-reduced" file, perhaps from a previous run, but
                 # for the current set of services, dimension are too large.
-                if __debug__: log('existing resized file larger than {}x{}: {}',
-                                  max_width, max_height, new_file)
+                if __debug__: log('existing resized file larger than'
+                                  + f' {max_width}x{max_height}: {new_file}')
         inform(f'Dimensions too large; reducing dimensions: {relative(file)}')
         from handprint.images import reduced_image_dimensions
         (resized, error) = reduced_image_dimensions(file, new_file, max_width, max_height)

@@ -29,7 +29,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -40,7 +40,7 @@ if sys.version_info <= (3, 8):
     print('Handprint requires Python version 3.8 or higher,')
     print('but the current version of Python is ' +
           str(sys.version_info.major) + '.' + str(sys.version_info.minor) + '.')
-    sys.exit(6)
+    exit(6)
 
 from   boltons.debugutils import pdb_on_signal
 from   bun import UI, inform, alert, alert_fatal, warn
@@ -48,6 +48,7 @@ from   commonpy.data_utils import timestamp
 from   commonpy.file_utils import filename_extension, files_in_directory
 from   commonpy.file_utils import readable, writable
 from   commonpy.interrupt import config_interrupt, interrupt, interrupted
+from   commonpy.string_utils import antiformat
 from   fastnumbers import fast_real, isreal, isint
 import os
 from   os import path, cpu_count
@@ -55,7 +56,7 @@ import plac
 import signal
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
+    from sidetrack import set_debug, log
 
 import handprint
 from handprint import print_version
@@ -109,17 +110,17 @@ Installing credentials for cloud-based services
 If given the command-line flag -l (or /l on Windows), Handprint will print a
 list of the known services, and exit.
 
-Before a given service can be used, if it is cloud-based commercial OCR/HTR
-service, Handprint needs to be supplied with user credentials for accessing
-that service.  The credentials must be stored in a JSON file with a certain
-format; see the Handprint user documentation for details about the formats
-for each service.  To add a new credentials file, use the -a option (/a on
-Windows) in combination with the name of a service and a single file path on
-the command line.  The name supplied right after the -a option must be the
-name of a recognized service (such as "google", "amazon", "microsoft"), and
-the file argument must be a JSON file containing the credentials data in the
-required format for that service.  Here is an example of adding credentials
-for Google (assuming you created the JSON file as described in the docs):
+Before a given service can be used, Handprint needs to be supplied with user
+credentials for accessing that service.  The credentials must be stored in a
+JSON file with a specific format that varies depending on the service; please
+see the Handprint user documentation for details about the formats for each
+service.  To add a new credentials file, use the -a option (/a on Windows) in
+combination with the name of a service and a single file path on the command
+line.  The name supplied right after the -a option must be the name of a
+recognized service (such as "google", "amazon", "microsoft"), and the file
+argument must be a JSON file containing the credentials data in the required
+format for that service.  Here is an example of adding credentials for Google
+(assuming you created the JSON file as described in the docs):
 
   handprint -a google mygooglecreds.json
 
@@ -226,7 +227,7 @@ working directory instead.
 
 When the inputs are URLs, Handprint must download a copy of the image located
 at the network address (because it is not possible to write the results in
-the network locations represented by the URLs.).  The images and other
+the network locations represented by the URLs).  The images and other
 results will be stored files whose root names have the form "document-N",
 where "N" is an integer.  The root name can be changed using the -b option
 (/b on Windows).  The image at networked locations will be converted to
@@ -546,7 +547,7 @@ Command-line arguments summary
         else:
             ex_class = exception[0]
             ex = exception[1]
-            alert_fatal(f'An error occurred ({ex_class.__name__}): {str(ex)}')
+            alert_fatal(f'An error occurred ({ex_class.__name__}): {antiformat(str(ex))}')
             # Return a better error code for some common cases.
             if ex_class in [FileNotFoundError, FileExistsError, PermissionError]:
                 exit_code = ExitCode.file_error
@@ -554,8 +555,8 @@ Command-line arguments summary
                 exit_code = ExitCode.exception
             if __debug__:
                 from traceback import format_exception
-                details = ''.join(format_exception(*exception))
-                logr(f'Exception: {str(ex)}\n{details}')
+                details = antiformat(''.join(format_exception(*exception)))
+                log(f'Exception: {antiformat(str(ex))}\n{details}')
     else:
         inform('Done.')
 

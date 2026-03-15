@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -21,7 +21,7 @@ import os
 import sys
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
+    from sidetrack import log
 
 import handprint
 from handprint.credentials.amazon_auth import AmazonCredentials

@@ -81,3 +81,8 @@ __pycache__
 *.microsoft.png
 *.google.png
 *.bak
+
+microsoft.json
+google.json
+google.json
+microsoft.json

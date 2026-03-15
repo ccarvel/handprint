@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -19,12 +19,13 @@ from   commonpy.interrupt import raise_for_interrupts
 from   commonpy.data_utils import pluralized
 from   commonpy.file_utils import filename_extension, filename_basename
 from   commonpy.file_utils import files_in_directory, readable, writable
+from   commonpy.string_utils import antiformat
 import os
 from   os.path import isfile, isdir, exists
 import sys
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
+    from sidetrack import log
 
 import handprint
 from handprint import _OUTPUT_EXT, _OUTPUT_FORMAT
@@ -69,7 +70,7 @@ class MainBody(object):
             self._do_preflight()
             self._do_main_work()
         except Exception as ex:
-            if __debug__: log(f'exception in main body: {str(ex)}')
+            if __debug__: log(f'exception in main body: {antiformat(str(ex))}')
             self.exception = sys.exc_info()
         if __debug__: log('finished MainBody')
 
@@ -82,7 +83,7 @@ class MainBody(object):
     def _do_preflight(self):
         '''Check the option values given by the user, and do other prep.'''
 
-        from handprint.network import network_available
+        from commonpy.network_utils import network_available
         if not network_available():
             alert_fatal('No network connection.')
             raise CannotProceed(ExitCode.no_network)

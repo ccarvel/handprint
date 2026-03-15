@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2018-2021 by the California Institute of Technology.  This code
+Copyright (c) 2018-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -23,7 +23,7 @@ import os
 import json
 
 if __debug__:
-    from sidetrack import set_debug, log, logr
+    from sidetrack import log
 
 import handprint
 from handprint.credentials.google_auth import GoogleCredentials
@@ -121,8 +121,10 @@ class GoogleTR(TextRecognition):
             if __debug__: log(f'building Google API object for {relative(path)}')
             try:
                 client  = gv.ImageAnnotatorClient()
+                # MODERNIZED: mapping= constructor keyword removed in google-cloud-vision 3.x;
+                # use direct keyword argument instead.
                 params  = gv.TextDetectionParams(
-                    mapping = { 'enable_text_detection_confidence_score': True })
+                    enable_text_detection_confidence_score = True)
                 context = gv.ImageContext(language_hints = ['en-t-i0-handwrit'],
                                           text_detection_params = params)
                 img     = gv.Image(content = image)

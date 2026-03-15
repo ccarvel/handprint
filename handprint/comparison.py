@@ -9,7 +9,7 @@ Michael Hucka <mhucka@caltech.edu> -- Caltech Library
 Copyright
 ---------
 
-Copyright (c) 2019-2021 by the California Institute of Technology.  This code
+Copyright (c) 2019-2022 by the California Institute of Technology.  This code
 is open-source software released under a 3-clause BSD license.  Please see the
 file "LICENSE" for more information.
 '''
@@ -179,8 +179,11 @@ def line_data(gt_line, htr_line, htr_index):
     # The stringdist package definition of levenshtein_norm() divides
     # by the longest of the two strings, but it is more conventional in
     # OCR papers and software to divide by the length of the reference.
-    from stringdist import levenshtein
-    distance = levenshtein(expected, obtained)
+    # MODERNIZED: StringDist 1.0.9 uses a broken C extension on Python 3.12+
+    # (PyArg_ParseTuple format string error). textdistance is already a
+    # dependency (used above for lcsseq) and returns the same integer distance.
+    from textdistance import levenshtein as _lev
+    distance = _lev.distance(expected, obtained)
     if len(expected) > 0:
         cer = '{:.2f}'.format(100 * float(distance)/len(expected))
     else:

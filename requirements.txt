@@ -1,40 +1,46 @@
 # =============================================================================
 # @file    requirements.txt
-# @brief   Python dependencies for Handprint
+# @brief   Python dependencies for Handprint for normal use
 # @created 2018-10-23
 # @license Please see the file named LICENSE in the project directory
 # @website https://github.com/caltechlibrary/handprint
 # =============================================================================
+# MODERNIZED: Replaced == exact pins with >= minimums to support Python 3.11+.
+# All minimum versions are the oldest releases with Python 3.12 binary wheels
+# (where applicable) and are free of known security vulnerabilities relevant
+# to handprint's usage. See MODERNIZATION_AUDIT.md for full rationale.
 
 aenum                    >= 3.1.0
 appdirs                  >= 1.4.4
 boltons                  >= 21.0.0
-boto3                    >= 1.17.91
-bun                      >= 0.0.7
-commonpy                 >= 1.3.9
-fastnumbers              >= 3.1.0
-google-api-core          >= 1.30.0
-google-api-python-client >= 2.8.0
-google-auth              >= 1.30.2
-google-auth-httplib2     >= 0.1.0
-google-cloud             >= 0.34.0
-google-cloud-vision      >= 2.3.1
-googleapis-common-protos >= 1.53.0
-grpcio                   >= 1.38.0
+boto3                    >= 1.28.0        # MODERNIZED: 1.17.91 has no Python 3.11/3.12 wheels
+bun                      >= 0.0.8
+commonpy                 >= 1.9.1
+fastnumbers              >= 3.2.0         # MODERNIZED: 3.1.0 has no Python 3.12 wheels
+google-api-core          >= 2.11.0        # MODERNIZED: 1.30.0 incompatible with google-cloud-vision 3.x
+google-api-python-client >= 2.100.0       # MODERNIZED: 2.8.0 has no Python 3.12 wheels
+google-auth              >= 2.22.0        # MODERNIZED: 1.30.2 incompatible with google-api-core 2.x
+google-auth-httplib2     >= 0.2.0         # MODERNIZED: 0.1.0 targets google-auth 1.x
+google-cloud-vision      >= 3.4.0         # MODERNIZED: 2.3.1 has no Python 3.12 wheels; 3.x is stable GA
+googleapis-common-protos >= 1.60.0        # MODERNIZED: 1.53.0 has no Python 3.12 wheels
+grpcio                   >= 1.59.0        # MODERNIZED: 1.44.0 has no Python 3.12 wheels
 humanize                 >= 3.7.1
-imagesize                >= 1.2.0
-matplotlib               >= 3.4.2
-numpy                    >= 1.20.3
-Pillow                   >= 8.2.0
-plac                     >= 1.3.3
-psutil                   >= 5.8.0
-PyMuPDF                  >= 1.18.14
-requests                 >= 2.25.0
-rich                     >= 10.1.0
-setuptools               >= 57.0.0
-sidetrack                >= 1.4.0
-StringDist               >= 1.0.9
-textdistance             >= 4.2.1
-urllib3                  == 1.26.5
-validator-collection     >= 1.5.0
-wheel                    >= 0.36.2
+imagesize                >= 1.4.1         # MODERNIZED: 1.2.0 is older than needed
+matplotlib               >= 3.7.0         # MODERNIZED: 3.4.2 has no Python 3.11/3.12 wheels
+numpy                    >= 1.26.0        # MODERNIZED: 1.22.2 has no Python 3.12 wheels
+Pillow                   >= 10.0.0        # MODERNIZED: 9.0.1 has no Python 3.12 wheels; CVE fixes
+plac                     >= 1.3.4
+psutil                   >= 5.9.0         # MODERNIZED: 5.8.0 has no Python 3.12 wheels
+PyMuPDF                  >= 1.23.0        # MODERNIZED: 1.19.6 has no Python 3.11/3.12 wheels
+requests                 >= 2.31.0        # MODERNIZED: 2.25.0 has CVE-2023-32681
+rich                     >= 12.6.0        # MODERNIZED: 12.0.1 predates Python 3.11 wheel publication
+setuptools               >= 68.0.0        # MODERNIZED: bumped for Python 3.12 support
+sidetrack                >= 2.0.0
+# MODERNIZED: StringDist removed — its C extension is broken on Python 3.12+
+# (abandoned package, last release 1.0.9 in 2018). Replaced by textdistance
+# (already a dependency) in comparison.py.
+textdistance             >= 4.5.0         # MODERNIZED: 4.2.2 older than needed
+urllib3                  >= 1.26.18       # MODERNIZED: 1.26.5 has CVE-2023-43804; allows urllib3 v2
+validator-collection     >= 1.5.0         # WARNING: last upstream release was 2020; may need replacement
+# MODERNIZED: removed google-cloud == 0.34.0 (deprecated meta-package, not needed)
+# MODERNIZED: removed wheel (build tool; must not be in install_requires)
